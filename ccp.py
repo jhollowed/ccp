@@ -125,6 +125,16 @@ class ccp:
         ax2.set_yticks(self.a[self.snaps][0::4])
         for tick in ax1.yaxis.get_major_ticks(): tick.label.set_fontsize(13)
         for tick in ax2.yaxis.get_major_ticks(): tick.label2.set_fontsize(13)
+        
+        orig_xlim = ax1.get_xlim()
+        ticks = ax1.get_yticks()
+        for i in range(len(ticks)):
+            if(i%2==0): continue
+            ax1.fill_between([orig_xlim[0], orig_xlim[1]], 
+                             np.ones(2)*(ticks[i] - (ticks[i]-ticks[i-1])), 
+                             np.ones(2)*ticks[i], 
+                             color='k', alpha=0.075)
+        ax1.set_xlim(orig_xlim)
 
         lns = l1+l2
         labs = [l.get_label() for l in lns]
@@ -178,6 +188,16 @@ class ccp:
         ax1.set_yticks(d[self.snaps][0::4])
         for tick in ax1.yaxis.get_major_ticks(): tick.label.set_fontsize(13)
         for tick in ax2.yaxis.get_major_ticks(): tick.label2.set_fontsize(13)
+        
+        orig_xlim = ax1.get_xlim()
+        ticks = ax1.get_yticks()
+        for i in range(len(ticks)):
+            if(i%2==0): continue
+            ax1.fill_between([orig_xlim[0], orig_xlim[1]], 
+                             np.ones(2)*(ticks[i] - (ticks[i]-ticks[i-1])), 
+                             np.ones(2)*ticks[i], 
+                             color='k', alpha=0.075)
+        ax1.set_xlim(orig_xlim)
 
         lns = lv+lvb+ld+ldb
         labs = [l.get_label() for l in lns]
@@ -206,7 +226,7 @@ class ccp:
         # assume snapshot-wise subdirectories are found in lc_dir and snap_dir,
         # where each subdirectory has the same prefix (could be 'STEP487' or 'lc487'...)
         # other subdirectories present might mess this up if they share the same prefix,
-        # or there's lots of them
+        # or if there's lots of them
         lc_subdirs = [s.split('/')[-2] for s in glob.glob('{}/*/'.format(self.lc_dir))]
         lc_subdirs_split = np.array([["".join(x) for _, x in 
                           itertools.groupby(s, key=str.isdigit)] for s in lc_subdirs])
@@ -223,49 +243,85 @@ class ccp:
         snap_uniq_prefixes, counts = np.unique(snap_prefixes, return_counts = True)
         snap_prfx = snap_uniq_prefixes[np.argmax(counts)]
         
-        # get correct subdirs, sort by step, measure sizes        
+        # get correct subdirs, sort by step, get files, measure sizes.
+        # it is assumed that lightcone files have the characters 'lc' in them somewhere...
+        # anything else is ignored, including any .SubInput files
         lc_shells = np.array(glob.glob('{}/{}*'.format(self.lc_dir, lc_prfx)))
-        lc_shells = lc_shells[np.argsort([int(s.split(lc_prfx)[-1]) for s in lc_shells])]
-        skip_files = [[('SubInput' in f) if for f in glob.glob('{}/*'.format(dir_))]
-                      for dir_ in lc_shells]
-        pdb.set_trace()
-        lc_sizes = sum([
-                   sum([os.path.getsize(f) if for f in glob.glob('{}/*'.format(dir_))])
-                   for dir_ in lc_shells])/1e9
-        lc_snaps = np.sort([int(s.split(lc_prfx)[-1]) for s in lc_shells])
+        lc_snaps = np.array([int(s.split(lc_prfx)[-1]) for s in lc_shells])
+        lc_snap_mask = [s in self.snaps for s in lc_snaps]
+        lc_shells = (lc_shells[lc_snap_mask])[np.argsort(lc_snaps[lc_snap_mask])]
 
+        all_files = [np.array(glob.glob('{}/*'.format(dir_))) for dir_ in lc_shells]
+        skip_files = [np.array([(('lc' in f.split('/')[-1]) and 
+                                 ('SubInput' not in f.split('/')[-1])) 
+                                 for f in files]) for files in all_files]
+        
+        lc_sizes = np.array([ sum([os.path.getsize(f) for f in all_files[i][skip_files[i]]])
+                            for i in range(len(all_files)) ]) / 1e9 # in GB
+
+        # it is assumed that snapshot files contain 'mpicosmo', and do not contain
+        # 'full'-- this is very particular to Outer Rim, because full particle snapshots
+        # have been partially deleted. If running for a different simulation, change 
+        # skip_files as needed
         snapshots = np.array(glob.glob('{}/{}*'.format(self.snap_dir, snap_prfx)))
-        snapshots = snapshots[np.argsort([int(s.split(lc_prfx)[-1]) for s in lc_shells])]
-        snap_sizes = sum([
-                     sum([os.path.getsize(f) for f in glob.glob('{}/*'.format(dir_))])
-                     for dir_ in snapshots])/1e9
-        snap_mean = np.mean(snap_sizes)
-        snap_std = np.std(snap_sizes)
+        snap_nums = np.array([int(s.split(snap_prfx)[-1]) for s in snapshots])
+        snap_mask = [s in self.snaps for s in snap_nums]
+        snapshots = (snapshots[snap_mask])[np.argsort(snap_nums[snap_mask])]
+        
+        all_files = [np.array(glob.glob('{}/*'.format(dir_))) for dir_ in snapshots]
+        skip_files = [np.array([(('mpicosmo' in f.split('/')[-1]) and 
+                                 ('full' not in f.split('/')[-1])) 
+                                 for f in files]) for files in all_files] # <-- Outer Rim specific
+        snap_sizes = np.array([ sum([os.path.getsize(f) for f in all_files[i][skip_files[i]]])
+                            for i in range(len(all_files)) ])
+        snap_mean = np.mean(snap_sizes) / 1e7 # in GB (extra factor of 100 to account for downsampling
+        snap_std = np.std(snap_sizes) / 1e7
 
         # plot snap vs d and snap vs v curves
-
-        pdb.set_trace()
         ax1 = plt.subplot2grid((1,1), (0,0))
-        ld = ax1.plot(lc_snaps, lc_sizes, lw=2, 
-                      label=r'$\mathrm{{{}\>lightcone}}$'.format(self.sim_name), c=self.cm[2])
-        ldb = ax1.plot(self.snaps, np.ones(len(self.snaps))*snap_mean, '--', 
+        ax2 = ax1.twinx()
+        
+        try:
+            llc = ax1.plot(self.snaps, lc_sizes, lw=2, 
+                          label=r'$\mathrm{{{}\>lightcone}}$'.format(self.sim_name), c=self.cm[2])
+        except ValueError:
+            # this will happen if the input lightcone does not contain all of the steps
+            # specified in self.snaps
+            llc = ax1.plot(sorted(lc_snaps[lc_snap_mask]), lc_sizes, lw=2, 
+                          label=r'$\mathrm{{{}\>lightcone}}$'.format(self.sim_name), c=self.cm[2])
+        orig_xlim = ax1.get_xlim()
+        
+        lsn = ax2.plot(orig_xlim, np.ones(2)*snap_mean, '--', 
                        c=self.cm[5], lw=1, label=r'$\mathrm{{{}\>snapshots}}$'.format(
                        self.sim_name))
-        ax1.fill_between(self.snaps, np.ones(len(self.snaps))*snap_mean - snap_std,
-                                     np.ones(len(self.snaps))*snap_mean + snap_std,
-                         color=self.cm[5], alpha=.5, lw=0)
+        ax2.fill_between(orig_xlim, np.ones(2)*snap_mean - snap_std,
+                                   np.ones(2)*snap_mean + snap_std,
+                         color=self.cm[5], alpha=.3, lw=0)
         
         # formatting
         ax1.set_xticks(self.snaps[0::2])
+        ax1.set_yticks(np.arange(ax1.get_ylim()[0], ax1.get_ylim()[1], 300))
         ax1.set_xticklabels([r'${}$'.format(s) for s in self.snaps[0::2].astype(str)], 
                             rotation= 270,fontsize=13)
-        ax1.set_yticks(lc_sizes[0::4])
+        ax2.set_ylim([40000, 42000]) # <-- Outer Rim specific...
         for tick in ax1.yaxis.get_major_ticks(): tick.label.set_fontsize(13)
+        
+        ticks = ax1.get_yticks()
+        for i in range(len(ticks)):
+            if(i%2==0): continue
+            ax1.fill_between([orig_xlim[0], orig_xlim[1]], 
+                             np.ones(2)*(ticks[i] - (ticks[i]-ticks[i-1])), 
+                             np.ones(2)*ticks[i], 
+                             color='k', alpha=0.075)
+        ax1.set_xlim(orig_xlim)
 
+        lns = llc + lsn
+        labs = [l.get_label() for l in lns]
         ax1.grid()
         ax1.set_xlabel(r'$\mathrm{snapshot}$', fontsize=16)
-        ax1.set_ylabel(r'$\mathrm{Storage\>Size\>[Gb]}$', fontsize=16)
-        ax1.legend(loc='upper right', fontsize=14)
+        ax1.set_ylabel(r'$\mathrm{Lightcone\>Storage\>Size\>[Gb]}$', fontsize=16, color=self.cm[2])
+        ax2.set_ylabel(r'$\mathrm{Snapshot\>Storage\>Size\>[Gb]}$', fontsize=16, color=self.cm[5])
+        ax2.legend(lns, labs, loc='upper right', fontsize=14)
 
         fig = plt.gcf()
         fig.set_size_inches(10.5, 6)
@@ -275,11 +331,10 @@ class ccp:
     # =========================================================================
 
 
-    def make_all():
-        self.step_vs_z(snapshots);
-        self.step_vs_comv(snapshots);
-        self.step_vs_lcShells(snapshots);
-        self.step_vs_snapShells(snapshots);
+    def make_all(self):
+        self.step_vs_z();
+        self.step_vs_comv();
+        self.step_vs_lcMem();
 
   
 # =========================================================================
