@@ -18,7 +18,7 @@ Feel free to contribute and add more!
 Params:
 :param snapshots:  A list of snapshot integers. Defaults to None, in 
                    which case the snapshots will be read from AlphaQ
-                   outout directories on the Mira filesystem (applies
+                   output directories on the Mira file system (applies
                    to OuterRim and many other HACC sims)
 :param step_range: The step range of interest. Expected a list in the
                    form [minStep, maxStep]. Defaults to [499, 247], 
@@ -32,10 +32,10 @@ Params:
                    Defaults to 500
 :param lc_dir:     Path to a lightcone top-level directory (expects snapshot-wise 
                    subdirectories). Defaults to the OuterRim full particle 
-                   lightcone on the Mira filesystem
+                   lightcone on the Mira file system
 :param snap_dir:   Path to a snapshot top-level directory (expects snapshot-wise 
                    subdirectories). Defaults to the OuterRim full particle 
-                   snapshots on the Mira filesystem
+                   snapshots on the Mira file system
 :param sim_name:   simulation name for figure text
 :param rL:         box side length of the simulation of interest, in Mpc/h. 
                    Defaults to 3000 for Outer Rim
