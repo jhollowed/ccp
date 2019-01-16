@@ -100,7 +100,7 @@ class ccp:
         ax2 = ax1.twinx()
         
         # make snapshot table
-        # if len(snaps) is much larger than 60, may need to increase numCols
+        # if len(snaps) is much larger(smaller) than 60, may need to increase(decrease) numCols
         tab.axis('tight')
         tab.axis('off')
         numCols = 3
@@ -262,7 +262,7 @@ class ccp:
         # it is assumed that snapshot files contain 'mpicosmo', and do not contain
         # 'full'-- this is very particular to Outer Rim, because full particle snapshots
         # have been partially deleted. If running for a different simulation, change 
-        # skip_files as needed
+        # skip_files, and the factor of 1/1e7 in snap_mean and snap_std, as needed
         snapshots = np.array(glob.glob('{}/{}*'.format(self.snap_dir, snap_prfx)))
         snap_nums = np.array([int(s.split(snap_prfx)[-1]) for s in snapshots])
         snap_mask = [s in self.snaps for s in snap_nums]
@@ -271,13 +271,13 @@ class ccp:
         all_files = [np.array(glob.glob('{}/*'.format(dir_))) for dir_ in snapshots]
         skip_files = [np.array([(('mpicosmo' in f.split('/')[-1]) and 
                                  ('full' not in f.split('/')[-1])) 
-                                 for f in files]) for files in all_files] # <-- Outer Rim specific
+                                 for f in files]) for files in all_files]
         snap_sizes = np.array([ sum([os.path.getsize(f) for f in all_files[i][skip_files[i]]])
                             for i in range(len(all_files)) ])
-        snap_mean = np.mean(snap_sizes) / 1e7 # in GB (extra factor of 100 to account for downsampling
+        snap_mean = np.mean(snap_sizes) / 1e7 # in GB (extra factor of 100 to account for downsampling)
         snap_std = np.std(snap_sizes) / 1e7
 
-        # plot snap vs d and snap vs v curves
+        # plot snap vs lc storage
         ax1 = plt.subplot2grid((1,1), (0,0))
         ax2 = ax1.twinx()
         
@@ -286,7 +286,7 @@ class ccp:
                           label=r'$\mathrm{{{}\>lightcone}}$'.format(self.sim_name), c=self.cm[2])
         except ValueError:
             # this will happen if the input lightcone does not contain all of the steps
-            # specified in self.snaps
+            # specified in self.snaps (lightcone is smaller than desired redshift range)
             llc = ax1.plot(sorted(lc_snaps[lc_snap_mask]), lc_sizes, lw=2, 
                           label=r'$\mathrm{{{}\>lightcone}}$'.format(self.sim_name), c=self.cm[2])
         orig_xlim = ax1.get_xlim()
