@@ -47,12 +47,22 @@ Params:
 
 ## Usage
 
-```
+```python
 import ccp
+import matplotlib.pyplot as plt
 
 # plot with default settings (otherwise specify any of the optional params listed above) 
 outerRim_figs = ccp.ccp()
-
 outerRim_figs.make_all()
+
+# or customize to a range of z=[0,1], with new color scheme
+custom_figs = cpp.cpp(step_range=[247, 499], cm=plt.cm.viridis)
+custom_figs.step_vs_z()
 ```
 
+The result of the first call to `make_all()` is shown below, followed by the second customized call
+
+![Outer Rim step vs redshift](sample_figs/or_step_vs_z.png?raw=true "Outer Rim step vs redshift")
+![Outer Rim step vs comoving distance/volume](sample_figs/or_step_vs_comv.png?raw=true "Outer Rim step vs comoving distance/volume")
+![Outer Rim step vs storage size](sample_figs/or_step_vs_mem.png?raw=true "Outer Rim step vs storage size")
+![Customized Outer Rim step vs redshift](sample_figs/or_step_vs_z_alt.png?raw=true "Customized Outer Rim step vs redshift")
