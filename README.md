@@ -47,6 +47,8 @@ Params:
 
 ## Usage
 
+Disclaimer: if you muck around with the too much, the plots may render with poor formatting (if the axes ranges are drastically changed from the default, for instance), but it should be easy enough to look toward the bottom section of each plotting function, under the `# formatting` comment heading, and clean it up.
+
 ```python
 import ccp
 import matplotlib.pyplot as plt
